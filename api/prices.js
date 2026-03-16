@@ -1,194 +1,160 @@
 // ============================================================
 //  Egypt Construction Prices API
-//  Vercel Serverless Function — يسكرب أسعار مواد البناء
-//  المصادر: مواقع مصرية متعددة
+//  المصدر: theprice1.com (أسعار كوم) — يتحدث يومياً
 // ============================================================
 
-// Cache في الذاكرة (تعيش طول عمر الـ instance)
 let memCache = { data: null, time: 0 };
-const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 ساعات
+const CACHE_TTL = 6 * 60 * 60 * 1000;
 
-// ─── دالة fetch مع timeout ───────────────────────────────
-async function fetchWithTimeout(url, ms = 8000) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), ms);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ar,en;q=0.5',
-        'Cache-Control': 'no-cache',
-      },
-    });
-    return await res.text();
-  } finally {
-    clearTimeout(timer);
-  }
+const SOURCE_URL = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
+
+async function fetchPage() {
+  const res = await fetch(SOURCE_URL, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'ar,en;q=0.5',
+    },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return await res.text();
 }
 
-// ─── استخراج رقم من نص ────────────────────────────────────
 function extractNumber(text) {
   if (!text) return null;
-  const clean = text.replace(/,/g, '').replace(/٬/g, '');
-  const m = clean.match(/[\d]+(?:\.\d+)?/);
-  return m ? parseFloat(m[0]) : null;
+  const clean = text.replace(/,|،|٬/g, '').replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632);
+  const m = clean.match(/\d{4,6}/);
+  return m ? parseInt(m[0]) : null;
 }
 
-// ─── استخراج بالـ Regex ───────────────────────────────────
-function regexExtract(html, patterns) {
-  for (const pat of patterns) {
-    const m = html.match(pat);
-    if (m) {
-      const num = extractNumber(m[1] || m[0]);
-      if (num && num > 0) return num;
+function parseTable(html, keyword) {
+  // إيجاد الجدول الأقرب للكلمة المفتاحية
+  const idx = html.indexOf(keyword);
+  if (idx === -1) return null;
+
+  const tableStart = html.indexOf('<table', idx);
+  if (tableStart === -1) return null;
+  const tableEnd = html.indexOf('</table>', tableStart) + 8;
+  const table = html.substring(tableStart, tableEnd);
+
+  // استخراج الصفوف
+  const rows = table.split('<tr').slice(2); // تخطي الهيدر
+  const results = [];
+
+  for (const row of rows) {
+    const cells = row.split('<td');
+    if (cells.length < 4) continue;
+
+    const getText = (cell) => cell.replace(/<[^>]+>/g, '').trim();
+    const name = getText(cells[1]);
+    const high = extractNumber(getText(cells[2]));
+    const low  = extractNumber(getText(cells[3]));
+    const avg  = cells[4] ? extractNumber(getText(cells[4])) : null;
+
+    if (high || low) {
+      results.push({
+        name,
+        price: avg || Math.round(((high || 0) + (low || 0)) / 2),
+        high: high || 0,
+        low:  low  || 0,
+      });
     }
   }
-  return null;
+  return results.length ? results : null;
 }
 
-// ─── السكرابر الأول: مصراوي / اليوم السابع RSS ────────────
-async function scrapeFromNews() {
-  const results = {};
+function buildPrices(html) {
+  const prices = {};
 
-  // أسعار حديد التسليح
-  try {
-    const html = await fetchWithTimeout(
-      'https://www.youm7.com/Section/أسعار/468'
-    );
-    // ابحث عن أسعار الحديد
-    const steelPatterns = [
-      /حديد[^<]*?(\d{1,3}[,،]?\d{3})\s*جنيه/gi,
-      /سعر\s*الحديد[^<]*?(\d{1,3}[,،]?\d{3})/gi,
-      /ezz[^<]*?(\d{1,3}[,،]?\d{3})/gi,
-    ];
-    const steel = regexExtract(html, steelPatterns);
-    if (steel && steel > 10000) results.steel = steel;
-  } catch(e) {}
-
-  // أسعار الأسمنت
-  try {
-    const html = await fetchWithTimeout(
-      'https://www.youm7.com/Section/أسعار/468'
-    );
-    const cementPatterns = [
-      /أسمنت[^<]*?(\d{1,3}[,،]?\d{3})\s*جنيه/gi,
-      /سعر\s*الأسمنت[^<]*?(\d{3,4})/gi,
-      /الاسمنت[^<]*?(\d{3,4})/gi,
-    ];
-    const cement = regexExtract(html, cementPatterns);
-    if (cement && cement > 500) results.cement = cement;
-  } catch(e) {}
-
-  return results;
-}
-
-// ─── السكرابر الثاني: مواقع أسعار متخصصة ─────────────────
-async function scrapeSpecialized() {
-  const results = {};
-
-  // محاولة جلب أسعار من موقع متخصص
-  const urls = [
-    'https://www.masrawy.com/news/tag/أسعار-مواد-البناء',
-    'https://www.elwatannews.com/news/tag/أسعار-مواد-البناء',
-  ];
-
-  for (const url of urls) {
-    try {
-      const html = await fetchWithTimeout(url, 6000);
-
-      if (!results.steel) {
-        const m = html.match(/حديد[^<"]{0,30}?(\d{1,2}[,،]\d{3})\s*(?:جنيه|ج\.م)/i);
-        if (m) {
-          const v = extractNumber(m[1]);
-          if (v > 10000) results.steel = v;
-        }
-      }
-
-      if (!results.cement) {
-        const m = html.match(/أسمنت[^<"]{0,30}?(\d{3,4})\s*(?:جنيه|ج\.م)/i);
-        if (m) {
-          const v = extractNumber(m[1]);
-          if (v > 500) results.cement = v;
-        }
-      }
-
-    } catch(e) {}
+  // ── الحديد ──
+  const steelRows = parseTable(html, 'حديد البناء');
+  if (steelRows && steelRows.length > 0) {
+    // متوسط كل الشركات
+    const avg = Math.round(steelRows.reduce((s, r) => s + r.price, 0) / steelRows.length);
+    const ezzRow = steelRows.find(r => r.name.includes('عز')) || steelRows[0];
+    prices.steel = {
+      price: avg,
+      change: 0,
+      unit: 'جنيه / طن',
+      src: 'أسعار كوم',
+      detail: ezzRow ? `عز: ${ezzRow.price.toLocaleString('ar-EG')}` : '',
+    };
   }
 
-  return results;
+  // ── الأسمنت ──
+  const cementRows = parseTable(html, 'أسمنت البناء');
+  if (cementRows && cementRows.length > 0) {
+    const avg = Math.round(cementRows.reduce((s, r) => s + r.price, 0) / cementRows.length);
+    prices.cement = { price: avg, change: 0, unit: 'جنيه / طن', src: 'أسعار كوم' };
+  }
+
+  // ── الرمل ──
+  const sandMatch = html.match(/[رR]مل[^٠-٩\d]*([٠-٩\d]{2,4})\s*(?:جنيه|ج)/);
+  if (sandMatch) {
+    prices.sand = { price: extractNumber(sandMatch[1]) || 150, change: 0, unit: 'جنيه / م³', src: 'أسعار كوم' };
+  }
+
+  // ── السن والزلط ──
+  const gravelRows = parseTable(html, 'السن والظلط');
+  if (gravelRows && gravelRows.length > 0) {
+    prices.gravel = { price: gravelRows[0].price, change: 0, unit: 'جنيه / م³', src: 'أسعار كوم' };
+  }
+
+  // ── الطوب الأحمر ──
+  const bricksRows = parseTable(html, 'الطوب الأحمر');
+  if (bricksRows && bricksRows.length > 0) {
+    prices.bricks = { price: bricksRows[0].price, change: 0, unit: 'جنيه / ألف طوبة', src: 'أسعار كوم' };
+  }
+
+  return prices;
 }
 
-// ─── بيانات مرجعية (تُستخدم كـ fallback / seed) ──────────
-// آخر تحديث يدوي — تعكس أسعار السوق المصري التقريبية
-const REFERENCE_PRICES = {
-  steel:      { price: 28000, unit: 'جنيه / طن',     change: 0, src: 'بيانات مرجعية' },
-  cement:     { price: 3200,  unit: 'جنيه / طن',     change: 0, src: 'بيانات مرجعية' },
-  bricks:     { price: 6500,  unit: 'جنيه / ألف طوبة', change: 0, src: 'بيانات مرجعية' },
-  sand:       { price: 1800,  unit: 'جنيه / م³',     change: 0, src: 'بيانات مرجعية' },
-  gravel:     { price: 2200,  unit: 'جنيه / م³',     change: 0, src: 'بيانات مرجعية' },
-  ceramic:    { price: 350,   unit: 'جنيه / م²',     change: 0, src: 'بيانات مرجعية' },
-  paint:      { price: 280,   unit: 'جنيه / لتر',    change: 0, src: 'بيانات مرجعية' },
-  wood:       { price: 9500,  unit: 'جنيه / م³',     change: 0, src: 'بيانات مرجعية' },
-  copper:     { price: 380,   unit: 'جنيه / كجم',    change: 0, src: 'بيانات مرجعية' },
-  aluminum:   { price: 85000, unit: 'جنيه / طن',     change: 0, src: 'بيانات مرجعية' },
+// قيم احتياطية محدّثة (مارس 2026)
+const FALLBACK = {
+  steel:    { price: 37000, change: 0, unit: 'جنيه / طن',       src: 'بيانات احتياطية' },
+  cement:   { price: 4200,  change: 0, unit: 'جنيه / طن',       src: 'بيانات احتياطية' },
+  bricks:   { price: 7500,  change: 0, unit: 'جنيه / ألف طوبة', src: 'بيانات احتياطية' },
+  sand:     { price: 160,   change: 0, unit: 'جنيه / م³',       src: 'بيانات احتياطية' },
+  gravel:   { price: 280,   change: 0, unit: 'جنيه / م³',       src: 'بيانات احتياطية' },
+  ceramic:  { price: 450,   change: 0, unit: 'جنيه / م²',       src: 'بيانات احتياطية' },
+  paint:    { price: 380,   change: 0, unit: 'جنيه / لتر',      src: 'بيانات احتياطية' },
+  wood:     { price: 12000, change: 0, unit: 'جنيه / م³',       src: 'بيانات احتياطية' },
+  copper:   { price: 520,   change: 0, unit: 'جنيه / كجم',      src: 'بيانات احتياطية' },
+  aluminum: { price: 95000, change: 0, unit: 'جنيه / طن',       src: 'بيانات احتياطية' },
 };
 
-// ─── دمج نتائج السكرابينج مع البيانات المرجعية ────────────
-function mergeResults(scraped) {
-  const out = JSON.parse(JSON.stringify(REFERENCE_PRICES));
-
-  if (scraped.steel && scraped.steel > 10000 && scraped.steel < 100000) {
-    out.steel.change = scraped.steel - out.steel.price;
-    out.steel.price  = scraped.steel;
-    out.steel.src    = 'اليوم السابع';
-  }
-  if (scraped.cement && scraped.cement > 500 && scraped.cement < 10000) {
-    out.cement.change = scraped.cement - out.cement.price;
-    out.cement.price  = scraped.cement;
-    out.cement.src    = 'اليوم السابع';
-  }
-
-  return out;
-}
-
-// ─── Handler الرئيسي ──────────────────────────────────────
 export default async function handler(req, res) {
-  // CORS — يسمح لـ Blogger بالاتصال
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // تحقق من الكاش
   const force = req.query.force === '1';
   if (!force && memCache.data && Date.now() - memCache.time < CACHE_TTL) {
     return res.status(200).json({ ...memCache.data, cached: true });
   }
 
   try {
-    // شغّل السكرابرز بالتوازي
-    const [news, specialized] = await Promise.allSettled([
-      scrapeFromNews(),
-      scrapeSpecialized(),
-    ]);
+    const html  = await fetchPage();
+    const scraped = buildPrices(html);
 
-    const scraped = {
-      ...(news.status === 'fulfilled' ? news.value : {}),
-      ...(specialized.status === 'fulfilled' ? specialized.value : {}),
-    };
+    // دمج مع الاحتياطي
+    const prices = { ...FALLBACK };
+    for (const key of Object.keys(scraped)) {
+      if (scraped[key] && scraped[key].price > 0) {
+        prices[key] = { ...FALLBACK[key], ...scraped[key] };
+      }
+    }
 
-    const prices = mergeResults(scraped);
     const scrapedCount = Object.keys(scraped).length;
 
     const response = {
       success: true,
       cached: false,
       scrapedItems: scrapedCount,
-      source: scrapedCount > 0 ? 'سكرابينج مباشر + بيانات مرجعية' : 'بيانات مرجعية',
+      source: scrapedCount > 0 ? 'أسعار كوم (theprice1.com)' : 'بيانات احتياطية',
       updatedAt: new Date().toISOString(),
       updatedAtAr: new Date().toLocaleDateString('ar-EG', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -196,24 +162,21 @@ export default async function handler(req, res) {
       prices,
     };
 
-    // احفظ في الكاش
     memCache = { data: response, time: Date.now() };
-
     return res.status(200).json(response);
 
   } catch (err) {
-    // في حالة الخطأ، ارجع البيانات المرجعية
-    const fallback = {
+    const fallbackRes = {
       success: true,
       cached: false,
       scrapedItems: 0,
-      source: 'بيانات مرجعية (خطأ في الجلب)',
+      source: 'بيانات احتياطية (خطأ في الجلب)',
       updatedAt: new Date().toISOString(),
       updatedAtAr: new Date().toLocaleDateString('ar-EG', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
       }),
-      prices: REFERENCE_PRICES,
+      prices: FALLBACK,
     };
-    return res.status(200).json(fallback);
+    return res.status(200).json(fallbackRes);
   }
 }
