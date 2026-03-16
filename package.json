@@ -1,0 +1,9 @@
+{
+  "name": "egypt-construction-prices",
+  "version": "1.0.0",
+  "description": "أسعار مواد البناء في مصر - Vercel API",
+  "private": true,
+  "engines": {
+    "node": "18.x"
+  }
+}
