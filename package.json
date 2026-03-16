@@ -4,6 +4,6 @@
   "description": "أسعار مواد البناء في مصر - Vercel API",
   "private": true,
   "engines": {
-    "node": "18.x"
+    "node": "24.x"
   }
 }
