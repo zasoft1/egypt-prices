@@ -5,8 +5,7 @@
 
 let memCache = { data: null, time: 0 };
 const CACHE_TTL = 6 * 60 * 60 * 1000;
-const SOURCE_URL = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%9A%D9%8A%D9%88%D9%85/';
-
+const SOURCE_URL = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
 async function fetchPage() {
   const res = await fetch(SOURCE_URL, {
     headers: {
