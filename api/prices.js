@@ -5,9 +5,10 @@
 
 let memCache = { data: null, time: 0 };
 const CACHE_TTL = 6 * 60 * 60 * 1000;
-const SOURCE_URL  = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
-// النحاس — بيانات احتياطية (أسعار الأسلاك الكهربائية)
-const ALUM_URL    = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D8%A7%D9%84%D8%A3%D9%84%D9%88%D9%85%D9%86%D9%8A%D9%88%D9%85-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
+const SOURCE_URL    = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
+const ALUM_URL      = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D8%A7%D9%84%D8%A3%D9%84%D9%88%D9%85%D9%86%D9%8A%D9%88%D9%85-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
+const CERAMIC_URL   = 'https://www.biltafsil.com/building-materials/ceramics/';
+const WOOD_URL      = 'https://www.biltafsil.com/building-materials/wood/';
 
 async function fetchPage(url = SOURCE_URL) {
   const res = await fetch(url, {
@@ -217,9 +218,11 @@ export default async function handler(req, res) {
 
   try {
     // جلب الصفحات بالتوازي
-    const [mainHtml, alumHtml] = await Promise.all([
+    const [mainHtml, alumHtml, ceramicHtml, woodHtml] = await Promise.all([
       fetchPage(SOURCE_URL),
       fetchPage(ALUM_URL).catch(() => ''),
+      fetchPage(CERAMIC_URL).catch(() => ''),
+      fetchPage(WOOD_URL).catch(() => ''),
     ]);
 
     const scraped = buildPrices(mainHtml);
@@ -233,6 +236,26 @@ export default async function handler(req, res) {
       if (alumRows.length) {
         scraped.aluminum = { label:'الألومنيوم', icon:'🪟', cat:'metal', unit:'جنيه / طن', src:'أسعار كوم',
           items: alumRows, avg: Math.round(alumRows.reduce((s,r)=>s+r.price,0)/alumRows.length) };
+      }
+    }
+
+    // ── السيراميك من biltafsil.com ──
+    if (ceramicHtml) {
+      const ceramicTable = getNthTable(ceramicHtml, 0);
+      const ceramicRows = parseSimpleRows(ceramicTable, 50, 2000, 'جنيه / م²');
+      if (ceramicRows.length) {
+        scraped.ceramic = { label:'السيراميك', icon:'🔲', cat:'finish', unit:'جنيه / م²', src:'بالتفصيل',
+          items: ceramicRows, avg: Math.round(ceramicRows.reduce((s,r)=>s+r.price,0)/ceramicRows.length) };
+      }
+    }
+
+    // ── الخشب من biltafsil.com ──
+    if (woodHtml) {
+      const woodTable = getNthTable(woodHtml, 0);
+      const woodRows = parseSimpleRows(woodTable, 1000, 100000, 'جنيه / م³');
+      if (woodRows.length) {
+        scraped.wood = { label:'الخشب', icon:'🪵', cat:'finish', unit:'جنيه / م³', src:'بالتفصيل',
+          items: woodRows, avg: Math.round(woodRows.reduce((s,r)=>s+r.price,0)/woodRows.length) };
       }
     }
 
