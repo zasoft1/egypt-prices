@@ -5,7 +5,7 @@
 
 let memCache = { data: null, time: 0 };
 const CACHE_TTL = 6 * 60 * 60 * 1000;
-const SOURCE_URL = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%9A%D9%8A%D9%88%D9%85/';
+const SOURCE_URL = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
 
 async function fetchPage() {
   const res = await fetch(SOURCE_URL, {
@@ -54,7 +54,7 @@ function parseSteelRows(tableHtml) {
     const tds = row.split(/<td[\s>]/i);
     if (tds.length < 5) continue;
     const raw = cleanText(tds[1])
-      .replace(/class=["'][^"']*["']/gi,'')
+      .replace(/class="[^"]*"/gi,'')
       .replace(/سعر حديد\s*/i,'').replace(/اليوم$/i,'').trim();
     const name = raw.replace(/^[>\s]+/,'').trim();
     const avg = toNum(tds[4]);
@@ -74,7 +74,7 @@ function parseCementRows(tableHtml) {
     const tds = row.split(/<td[\s>]/i);
     if (tds.length < 3) continue;
     const raw2 = cleanText(tds[2] || tds[1])
-      .replace(/class=["'][^"']*["']/gi,'')
+      .replace(/class="[^"]*"/gi,'')
       .replace(/أسمنت|اسمنت/gi,'').replace(/\d+\.\d+/g,'').trim();
     const name = (raw2 || cleanText(tds[1])).replace(/^[>\s]+/,'').trim();
     const price = toNum(tds[tds.length - 1]);
@@ -93,7 +93,7 @@ function parseSimpleRows(tableHtml, minVal, maxVal, unit) {
   for (const row of rows) {
     const tds = row.split(/<td[\s>]/i);
     if (tds.length < 2) continue;
-    const name = cleanText(tds[1]).replace(/class=["'"][^"'"]*["']/gi,"").replace(/^[>\s]+/,"").trim();
+    const name = cleanText(tds[1]).replace(/class="[^"]*"/gi,"").replace(/class='[^']*'/gi,"").replace(/^[>\s]+/,"").trim();
     let price = null;
     for (let i = 2; i < tds.length; i++) {
       const v = toNum(tds[i]);
