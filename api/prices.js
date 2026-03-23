@@ -45,6 +45,19 @@ function getTableAfter(html, anchors) {
   return null;
 }
 
+// استخراج الجدول رقم N من الصفحة (0-based)
+function getNthTable(html, n) {
+  let pos = 0;
+  for (let i = 0; i <= n; i++) {
+    const tStart = html.indexOf('<table', pos);
+    if (tStart === -1) return null;
+    const tEnd = html.indexOf('</table>', tStart) + 8;
+    if (i === n) return html.substring(tStart, tEnd);
+    pos = tEnd;
+  }
+  return null;
+}
+
 // الحديد — 5 أعمدة (اسم، وحدة، أعلى، أدنى، متوسط)
 function parseSteelRows(tableHtml) {
   if (!tableHtml) return [];
@@ -107,62 +120,57 @@ function parseSimpleRows(tableHtml, minVal, maxVal, unit) {
 function buildPrices(html) {
   const data = {};
 
-  // ── الحديد ──
-  const steelTable = getTableAfter(html, ['أسعار طن حديد البناء اليوم','أسعار_طن_حديد_البناء_اليوم']);
+  // الصفحة دايماً بنفس الترتيب:
+  // جدول 0 = حديد، 1 = أسمنت، 2 = زلط، 3 = رمل، 4 = طوب أحمر، 5 = طوب أبيض
+
+  // ── الحديد (جدول 0) ──
+  const steelTable = getTableAfter(html, ['أسعار طن حديد البناء اليوم','أسعار_طن_حديد_البناء_اليوم'])
+    || getNthTable(html, 0);
   const steelRows = parseSteelRows(steelTable);
   if (steelRows.length) {
-    data.steel = {
-      label: 'حديد التسليح',
-      icon: '🔩',
-      cat: 'structure',
-      unit: 'جنيه / طن',
-      src: 'أسعار كوم',
-      items: steelRows,
-      avg: Math.round(steelRows.reduce((s,r)=>s+r.price,0)/steelRows.length),
-    };
+    data.steel = { label:'حديد التسليح', icon:'🔩', cat:'structure', unit:'جنيه / طن', src:'أسعار كوم',
+      items: steelRows, avg: Math.round(steelRows.reduce((s,r)=>s+r.price,0)/steelRows.length) };
   }
 
-  // ── الأسمنت ──
-  const cementTable = getTableAfter(html, ['أسعار طن أسمنت البناء اليوم','أسعار_طن_أسمنت_البناء_اليوم','أسمنت البناء اليوم','الاسمنت']);
+  // ── الأسمنت (جدول 1) ──
+  const cementTable = getTableAfter(html, ['أسعار طن أسمنت البناء اليوم','أسعار_طن_أسمنت_البناء_اليوم'])
+    || getNthTable(html, 1);
   const cementRows = parseCementRows(cementTable);
   if (cementRows.length) {
-    data.cement = {
-      label: 'الأسمنت',
-      icon: '🏭',
-      cat: 'structure',
-      unit: 'جنيه / طن',
-      src: 'أسعار كوم',
-      items: cementRows,
-      avg: Math.round(cementRows.reduce((s,r)=>s+r.price,0)/cementRows.length),
-    };
+    data.cement = { label:'الأسمنت', icon:'🏭', cat:'structure', unit:'جنيه / طن', src:'أسعار كوم',
+      items: cementRows, avg: Math.round(cementRows.reduce((s,r)=>s+r.price,0)/cementRows.length) };
   }
 
-  // ── الزلط ──
-  const gravelTable = getTableAfter(html, ['أسعار السن والظلط اليوم','أسعار_السن_والظلط_اليوم','السن والظلط','الظلط']);
+  // ── الزلط (جدول 2) ──
+  const gravelTable = getTableAfter(html, ['أسعار السن والظلط اليوم','أسعار_السن_والظلط_اليوم'])
+    || getNthTable(html, 2);
   const gravelRows = parseSimpleRows(gravelTable, 100, 2000, 'جنيه / م³');
   if (gravelRows.length) {
     data.gravel = { label:'الزلط والسن', icon:'🪨', cat:'structure', unit:'جنيه / م³', src:'أسعار كوم',
       items: gravelRows, avg: Math.round(gravelRows.reduce((s,r)=>s+r.price,0)/gravelRows.length) };
   }
 
-  // ── الرمل ──
-  const sandTable = getTableAfter(html, ['أسعار متر الرمل اليوم','أسعار_متر_الرمل_اليوم','متر الرمل','الرمل اليوم']);
+  // ── الرمل (جدول 3) ──
+  const sandTable = getTableAfter(html, ['أسعار متر الرمل اليوم','أسعار_متر_الرمل_اليوم'])
+    || getNthTable(html, 3);
   const sandRows = parseSimpleRows(sandTable, 50, 1000, 'جنيه / م³');
   if (sandRows.length) {
     data.sand = { label:'الرمل', icon:'⏳', cat:'structure', unit:'جنيه / م³', src:'أسعار كوم',
       items: sandRows, avg: Math.round(sandRows.reduce((s,r)=>s+r.price,0)/sandRows.length) };
   }
 
-  // ── الطوب الأحمر ──
-  const bricksTable = getTableAfter(html, ['أسعار الطوب الأحمر اليوم','أسعار_الطوب_الأحمر_اليوم','الطوب الأحمر اليوم','الطوب الأحمر']);
+  // ── الطوب الأحمر (جدول 4) ──
+  const bricksTable = getTableAfter(html, ['أسعار الطوب الأحمر اليوم','أسعار_الطوب_الأحمر_اليوم'])
+    || getNthTable(html, 4);
   const bricksRows = parseSimpleRows(bricksTable, 500, 15000, 'جنيه / ألف طوبة');
   if (bricksRows.length) {
     data.bricks = { label:'الطوب الأحمر', icon:'🧱', cat:'structure', unit:'جنيه / ألف طوبة', src:'أسعار كوم',
       items: bricksRows, avg: Math.round(bricksRows.reduce((s,r)=>s+r.price,0)/bricksRows.length) };
   }
 
-  // ── الطوب الأبيض ──
-  const wbTable = getTableAfter(html, ['أسعار الطوب الأبيض اليوم','أسعار_الطوب_الأبيض_اليوم','الطوب الأبيض اليوم','الطوب الأبيض']);
+  // ── الطوب الأبيض (جدول 5) ──
+  const wbTable = getTableAfter(html, ['أسعار الطوب الأبيض اليوم','أسعار_الطوب_الأبيض_اليوم'])
+    || getNthTable(html, 5);
   const wbRows = parseSimpleRows(wbTable, 100, 5000, 'جنيه / م²');
   if (wbRows.length) {
     data.white_bricks = { label:'الطوب الأبيض', icon:'⬜', cat:'structure', unit:'جنيه / م²', src:'أسعار كوم',
