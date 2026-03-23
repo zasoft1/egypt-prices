@@ -32,7 +32,13 @@ function toNum(text) {
 }
 
 function cleanText(text) {
-  return text.replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+  return text
+    .replace(/<[^>]+>/g,'')
+    .replace(/data-[a-z]+="[^"]*"/gi,'')
+    .replace(/class="[^"]*"/gi,'')
+    .replace(/^["'>\s]+/,'')
+    .replace(/\s+/g,' ')
+    .trim();
 }
 
 function getTableAfter(html, anchors) {
@@ -252,7 +258,7 @@ export default async function handler(req, res) {
     // ── الخشب من biltafsil.com ──
     if (woodHtml) {
       const woodTable = getNthTable(woodHtml, 0);
-      const woodRows = parseSimpleRows(woodTable, 1000, 100000, 'جنيه / م³');
+      const woodRows = parseSimpleRows(woodTable, 5000, 100000, 'جنيه / م³');
       if (woodRows.length) {
         scraped.wood = { label:'الخشب', icon:'🪵', cat:'finish', unit:'جنيه / م³', src:'بالتفصيل',
           items: woodRows, avg: Math.round(woodRows.reduce((s,r)=>s+r.price,0)/woodRows.length) };
