@@ -200,14 +200,14 @@ const FALLBACK = {
     items:[{name:'زلط جلبهانة',price:280},{name:'سن',price:260}]},
   ceramic: { label:'السيراميك', icon:'🔲', cat:'finish', unit:'جنيه / م²', src:'بيانات احتياطية', avg:175,
     items:[{name:'فرز ثالث حوائط',price:70},{name:'فرز ثاني أرضيات',price:120},{name:'فرز أول كليوباترا',price:220},{name:'بورسلين مصري 60×60',price:370}]},
-  paint: { label:'الدهانات', icon:'🎨', cat:'finish', unit:'جنيه / جالون 3.6ل', src:'بيانات احتياطية', avg:850,
-    items:[{name:'دهان بلاستيك شعبي',price:450},{name:'دهان GLC بلاستيك',price:750},{name:'دهان جوتن حراري',price:1100},{name:'دهان بروتال سوبر لوكس',price:1200}]},
+  paint: { label:'الدهانات', icon:'🎨', cat:'finish', unit:'جنيه / جالون', src:'بيانات احتياطية', avg:520,
+    items:[{name:'GLC سوبر دايتون (4.25 كجم)',price:275},{name:'GLC 7070 جالون',price:285},{name:'جوتن فينوماستيك (3 كجم)',price:405},{name:'جوتن مط (3 كجم)',price:455},{name:'بروتال فينيتكس بستلة (13 كجم)',price:1155}]},
   wood: { label:'الخشب', icon:'🪵', cat:'finish', unit:'جنيه / م³', src:'بيانات احتياطية', avg:13500,
     items:[{name:'خشب صنوبر',price:11000},{name:'خشب زان',price:14000},{name:'خشب أبيض روسي',price:16000}]},
-  copper: { label:'أسلاك كهربائية', icon:'🔌', cat:'metal', unit:'جنيه / كجم', src:'بيانات احتياطية', avg:580,
-    items:[{name:'سلك 1.5مم عازل',price:480},{name:'سلك 2.5مم عازل',price:580},{name:'سلك 4مم عازل',price:720},{name:'سلك 6مم عازل',price:1050}]},
-  aluminum: { label:'الألومنيوم', icon:'🪟', cat:'metal', unit:'جنيه / طن', src:'بيانات احتياطية', avg:95000,
-    items:[{name:'بروفيل نوافذ',price:95000}]},
+  copper: { label:'أسلاك كهربائية', icon:'🔌', cat:'metal', unit:'جنيه / متر', src:'بيانات احتياطية', avg:28,
+    items:[{name:'سلك 1.5 مم (السويدي)',price:18},{name:'سلك 2.5 مم (السويدي)',price:25},{name:'سلك 4 مم (السويدي)',price:38},{name:'سلك 6 مم (السويدي)',price:56},{name:'سلك 10 مم (السويدي)',price:95}]},
+  aluminum: { label:'الألومنيوم', icon:'🪟', cat:'metal', unit:'جنيه / كجم', src:'بيانات احتياطية', avg:85,
+    items:[{name:'بروفيل ألومنيوم نوافذ',price:75},{name:'بروفيل ألومنيوم أبواب',price:90},{name:'ألومنيوم مقطوع (خردة)',price:55}]},
 };
 
 export default async function handler(req, res) {
