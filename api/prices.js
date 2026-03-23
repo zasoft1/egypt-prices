@@ -6,7 +6,7 @@
 let memCache = { data: null, time: 0 };
 const CACHE_TTL = 6 * 60 * 60 * 1000;
 const SOURCE_URL  = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
-const COPPER_URL  = 'https://theprice1.com/scrap-copper-price-today/';
+// النحاس — بيانات احتياطية (أسعار الأسلاك الكهربائية)
 const ALUM_URL    = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D8%A7%D9%84%D8%A3%D9%84%D9%88%D9%85%D9%86%D9%8A%D9%88%D9%85-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
 
 async function fetchPage(url = SOURCE_URL) {
@@ -197,8 +197,8 @@ const FALLBACK = {
     items:[{name:'دهان بلاستيك شعبي',price:450},{name:'دهان GLC بلاستيك',price:750},{name:'دهان جوتن حراري',price:1100},{name:'دهان بروتال سوبر لوكس',price:1200}]},
   wood: { label:'الخشب', icon:'🪵', cat:'finish', unit:'جنيه / م³', src:'بيانات احتياطية', avg:13500,
     items:[{name:'خشب صنوبر',price:11000},{name:'خشب زان',price:14000},{name:'خشب أبيض روسي',price:16000}]},
-  copper: { label:'أسلاك النحاس', icon:'🔌', cat:'metal', unit:'جنيه / كجم', src:'بيانات احتياطية', avg:520,
-    items:[{name:'سلك 2.5مم',price:520},{name:'سلك 4مم',price:600}]},
+  copper: { label:'أسلاك كهربائية', icon:'🔌', cat:'metal', unit:'جنيه / كجم', src:'بيانات احتياطية', avg:580,
+    items:[{name:'سلك 1.5مم عازل',price:480},{name:'سلك 2.5مم عازل',price:580},{name:'سلك 4مم عازل',price:720},{name:'سلك 6مم عازل',price:1050}]},
   aluminum: { label:'الألومنيوم', icon:'🪟', cat:'metal', unit:'جنيه / طن', src:'بيانات احتياطية', avg:95000,
     items:[{name:'بروفيل نوافذ',price:95000}]},
 };
@@ -217,23 +217,14 @@ export default async function handler(req, res) {
 
   try {
     // جلب الصفحات بالتوازي
-    const [mainHtml, copperHtml, alumHtml] = await Promise.all([
+    const [mainHtml, alumHtml] = await Promise.all([
       fetchPage(SOURCE_URL),
-      fetchPage(COPPER_URL).catch(() => ''),
       fetchPage(ALUM_URL).catch(() => ''),
     ]);
 
     const scraped = buildPrices(mainHtml);
 
-    // ── النحاس من صفحة منفصلة ──
-    if (copperHtml) {
-      const copperTable = getNthTable(copperHtml, 0);
-      const copperRows = parseSimpleRows(copperTable, 100, 5000, 'جنيه / كجم');
-      if (copperRows.length) {
-        scraped.copper = { label:'أسلاك النحاس', icon:'🔌', cat:'metal', unit:'جنيه / كجم', src:'أسعار كوم',
-          items: copperRows, avg: Math.round(copperRows.reduce((s,r)=>s+r.price,0)/copperRows.length) };
-      }
-    }
+    // النحاس — من البيانات الاحتياطية فقط
 
     // ── الألومنيوم من صفحة منفصلة ──
     if (alumHtml) {
