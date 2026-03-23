@@ -5,16 +5,18 @@
 
 let memCache = { data: null, time: 0 };
 const CACHE_TTL = 6 * 60 * 60 * 1000;
-const SOURCE_URL = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
+const SOURCE_URL  = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
+const COPPER_URL  = 'https://theprice1.com/scrap-copper-price-today/';
+const ALUM_URL    = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D8%A7%D9%84%D8%A3%D9%84%D9%88%D9%85%D9%86%D9%8A%D9%88%D9%85-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
 
-async function fetchPage() {
-  const res = await fetch(SOURCE_URL, {
+async function fetchPage(url = SOURCE_URL) {
+  const res = await fetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
       'Accept': 'text/html,application/xhtml+xml',
       'Accept-Language': 'ar,en;q=0.5',
     },
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(10000),
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return await res.text();
@@ -189,12 +191,12 @@ const FALLBACK = {
     items:[{name:'رمل مكسر',price:160},{name:'رمل ناعم',price:150}]},
   gravel: { label:'الزلط والسن', icon:'🪨', cat:'structure', unit:'جنيه / م³', src:'بيانات احتياطية', avg:280,
     items:[{name:'زلط جلبهانة',price:280},{name:'سن',price:260}]},
-  ceramic: { label:'السيراميك', icon:'🔲', cat:'finish', unit:'جنيه / م²', src:'بيانات احتياطية', avg:450,
-    items:[{name:'متوسط الجودة 60×60',price:450},{name:'جودة عالية',price:650}]},
-  paint: { label:'الدهانات', icon:'🎨', cat:'finish', unit:'جنيه / لتر', src:'بيانات احتياطية', avg:380,
-    items:[{name:'دهان حراري',price:420},{name:'دهان بلاستيك',price:340}]},
-  wood: { label:'الخشب', icon:'🪵', cat:'finish', unit:'جنيه / م³', src:'بيانات احتياطية', avg:12000,
-    items:[{name:'خشب صنوبر',price:12000},{name:'خشب زان',price:15000}]},
+  ceramic: { label:'السيراميك', icon:'🔲', cat:'finish', unit:'جنيه / م²', src:'بيانات احتياطية', avg:175,
+    items:[{name:'فرز ثالث حوائط',price:70},{name:'فرز ثاني أرضيات',price:120},{name:'فرز أول كليوباترا',price:220},{name:'بورسلين مصري 60×60',price:370}]},
+  paint: { label:'الدهانات', icon:'🎨', cat:'finish', unit:'جنيه / جالون 3.6ل', src:'بيانات احتياطية', avg:850,
+    items:[{name:'دهان بلاستيك شعبي',price:450},{name:'دهان GLC بلاستيك',price:750},{name:'دهان جوتن حراري',price:1100},{name:'دهان بروتال سوبر لوكس',price:1200}]},
+  wood: { label:'الخشب', icon:'🪵', cat:'finish', unit:'جنيه / م³', src:'بيانات احتياطية', avg:13500,
+    items:[{name:'خشب صنوبر',price:11000},{name:'خشب زان',price:14000},{name:'خشب أبيض روسي',price:16000}]},
   copper: { label:'أسلاك النحاس', icon:'🔌', cat:'metal', unit:'جنيه / كجم', src:'بيانات احتياطية', avg:520,
     items:[{name:'سلك 2.5مم',price:520},{name:'سلك 4مم',price:600}]},
   aluminum: { label:'الألومنيوم', icon:'🪟', cat:'metal', unit:'جنيه / طن', src:'بيانات احتياطية', avg:95000,
@@ -214,8 +216,34 @@ export default async function handler(req, res) {
   }
 
   try {
-    const html = await fetchPage();
-    const scraped = buildPrices(html);
+    // جلب الصفحات بالتوازي
+    const [mainHtml, copperHtml, alumHtml] = await Promise.all([
+      fetchPage(SOURCE_URL),
+      fetchPage(COPPER_URL).catch(() => ''),
+      fetchPage(ALUM_URL).catch(() => ''),
+    ]);
+
+    const scraped = buildPrices(mainHtml);
+
+    // ── النحاس من صفحة منفصلة ──
+    if (copperHtml) {
+      const copperTable = getNthTable(copperHtml, 0);
+      const copperRows = parseSimpleRows(copperTable, 100, 5000, 'جنيه / كجم');
+      if (copperRows.length) {
+        scraped.copper = { label:'أسلاك النحاس', icon:'🔌', cat:'metal', unit:'جنيه / كجم', src:'أسعار كوم',
+          items: copperRows, avg: Math.round(copperRows.reduce((s,r)=>s+r.price,0)/copperRows.length) };
+      }
+    }
+
+    // ── الألومنيوم من صفحة منفصلة ──
+    if (alumHtml) {
+      const alumTable = getNthTable(alumHtml, 0);
+      const alumRows = parseSimpleRows(alumTable, 1000, 200000, 'جنيه / طن');
+      if (alumRows.length) {
+        scraped.aluminum = { label:'الألومنيوم', icon:'🪟', cat:'metal', unit:'جنيه / طن', src:'أسعار كوم',
+          items: alumRows, avg: Math.round(alumRows.reduce((s,r)=>s+r.price,0)/alumRows.length) };
+      }
+    }
 
     const prices = { ...FALLBACK };
     for (const key of Object.keys(scraped)) {
