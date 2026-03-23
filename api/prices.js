@@ -144,42 +144,42 @@ function buildPrices(html) {
   // ── الحديد (جدول 0) ──
   const steelRows = parseSteelRows(getNthTable(html, 0));
   if (steelRows.length) {
-    data.steel = { label:'حديد التسليح', icon:'🔩', cat:'structure', unit:'جنيه / طن', src:'أسعار كوم',
+    data.steel = { label:'حديد التسليح', icon:'🔩', cat:'structure', unit:'جنيه / طن', src:'السوق المصري',
       items: steelRows, avg: Math.round(steelRows.reduce((s,r)=>s+r.price,0)/steelRows.length) };
   }
 
   // ── الأسمنت (جدول 1) ──
   const cementRows = parseCementRows(getNthTable(html, 1));
   if (cementRows.length) {
-    data.cement = { label:'الأسمنت', icon:'🏭', cat:'structure', unit:'جنيه / طن', src:'أسعار كوم',
+    data.cement = { label:'الأسمنت', icon:'🏭', cat:'structure', unit:'جنيه / طن', src:'السوق المصري',
       items: cementRows, avg: Math.round(cementRows.reduce((s,r)=>s+r.price,0)/cementRows.length) };
   }
 
   // ── الزلط والسن (جدول 2) ──
   const gravelRows = parseSimpleRows(getNthTable(html, 2), 50, 5000, 'جنيه / م³');
   if (gravelRows.length) {
-    data.gravel = { label:'الزلط والسن', icon:'🪨', cat:'structure', unit:'جنيه / م³', src:'أسعار كوم',
+    data.gravel = { label:'الزلط والسن', icon:'🪨', cat:'structure', unit:'جنيه / م³', src:'السوق المصري',
       items: gravelRows, avg: Math.round(gravelRows.reduce((s,r)=>s+r.price,0)/gravelRows.length) };
   }
 
   // ── الرمل (جدول 3) ──
   const sandRows = parseSimpleRows(getNthTable(html, 3), 50, 5000, 'جنيه / م³');
   if (sandRows.length) {
-    data.sand = { label:'الرمل', icon:'⏳', cat:'structure', unit:'جنيه / م³', src:'أسعار كوم',
+    data.sand = { label:'الرمل', icon:'⏳', cat:'structure', unit:'جنيه / م³', src:'السوق المصري',
       items: sandRows, avg: Math.round(sandRows.reduce((s,r)=>s+r.price,0)/sandRows.length) };
   }
 
   // ── الطوب الأحمر (جدول 4) ──
   const bricksRows = parseSimpleRows(getNthTable(html, 4), 500, 50000, 'جنيه / ألف طوبة', true);
   if (bricksRows.length) {
-    data.bricks = { label:'الطوب الأحمر', icon:'🧱', cat:'structure', unit:'جنيه / ألف طوبة', src:'أسعار كوم',
+    data.bricks = { label:'الطوب الأحمر', icon:'🧱', cat:'structure', unit:'جنيه / ألف طوبة', src:'السوق المصري',
       items: bricksRows, avg: Math.round(bricksRows.reduce((s,r)=>s+r.price,0)/bricksRows.length) };
   }
 
   // ── الطوب الأبيض (جدول 5) ──
   const wbRows = parseSimpleRows(getNthTable(html, 5), 50, 50000, 'جنيه / م²', true);
   if (wbRows.length) {
-    data.white_bricks = { label:'الطوب الأبيض', icon:'⬜', cat:'structure', unit:'جنيه / م²', src:'أسعار كوم',
+    data.white_bricks = { label:'الطوب الأبيض', icon:'⬜', cat:'structure', unit:'جنيه / م²', src:'السوق المصري',
       items: wbRows, avg: Math.round(wbRows.reduce((s,r)=>s+r.price,0)/wbRows.length) };
   }
 
@@ -188,25 +188,25 @@ function buildPrices(html) {
 
 // بيانات احتياطية بنفس الهيكل الجديد
 const FALLBACK = {
-  steel: { label:'حديد التسليح', icon:'🔩', cat:'structure', unit:'جنيه / طن', src:'بيانات احتياطية', avg:36100,
+  steel: { label:'حديد التسليح', icon:'🔩', cat:'structure', unit:'جنيه / طن', src:'السوق المصري', avg:36100,
     items:[{name:'عز',price:38000},{name:'بشاي',price:37950},{name:'المصريين',price:37500},{name:'مصر ستيل',price:35000},{name:'العشري',price:34500}]},
-  cement: { label:'الأسمنت', icon:'🏭', cat:'structure', unit:'جنيه / طن', src:'بيانات احتياطية', avg:3760,
+  cement: { label:'الأسمنت', icon:'🏭', cat:'structure', unit:'جنيه / طن', src:'السوق المصري', avg:3760,
     items:[{name:'سيناء 52.5',price:3850},{name:'العسكري 52.5',price:3850},{name:'سيناء 42.5',price:3800},{name:'العريش 42.5',price:3800},{name:'المصريين',price:3770},{name:'وادي النيل',price:3680},{name:'بني سويف',price:3700}]},
-  bricks: { label:'الطوب الأحمر', icon:'🧱', cat:'structure', unit:'جنيه / ألف طوبة', src:'بيانات احتياطية', avg:7500,
+  bricks: { label:'الطوب الأحمر', icon:'🧱', cat:'structure', unit:'جنيه / ألف طوبة', src:'السوق المصري', avg:7500,
     items:[{name:'طوب أحمر مصمت',price:7500}]},
-  sand: { label:'الرمل', icon:'⏳', cat:'structure', unit:'جنيه / م³', src:'بيانات احتياطية', avg:160,
+  sand: { label:'الرمل', icon:'⏳', cat:'structure', unit:'جنيه / م³', src:'السوق المصري', avg:160,
     items:[{name:'رمل مكسر',price:160},{name:'رمل ناعم',price:150}]},
-  gravel: { label:'الزلط والسن', icon:'🪨', cat:'structure', unit:'جنيه / م³', src:'بيانات احتياطية', avg:280,
+  gravel: { label:'الزلط والسن', icon:'🪨', cat:'structure', unit:'جنيه / م³', src:'السوق المصري', avg:280,
     items:[{name:'زلط جلبهانة',price:280},{name:'سن',price:260}]},
-  ceramic: { label:'السيراميك', icon:'🔲', cat:'finish', unit:'جنيه / م²', src:'بيانات احتياطية', avg:175,
+  ceramic: { label:'السيراميك', icon:'🔲', cat:'finish', unit:'جنيه / م²', src:'السوق المصري', avg:175,
     items:[{name:'فرز ثالث حوائط',price:70},{name:'فرز ثاني أرضيات',price:120},{name:'فرز أول كليوباترا',price:220},{name:'بورسلين مصري 60×60',price:370}]},
-  paint: { label:'الدهانات', icon:'🎨', cat:'finish', unit:'جنيه / جالون', src:'بيانات احتياطية', avg:520,
+  paint: { label:'الدهانات', icon:'🎨', cat:'finish', unit:'جنيه / جالون', src:'السوق المصري', avg:520,
     items:[{name:'GLC سوبر دايتون (4.25 كجم)',price:275},{name:'GLC 7070 جالون',price:285},{name:'جوتن فينوماستيك (3 كجم)',price:405},{name:'جوتن مط (3 كجم)',price:455},{name:'بروتال فينيتكس بستلة (13 كجم)',price:1155}]},
-  wood: { label:'الخشب', icon:'🪵', cat:'finish', unit:'جنيه / م³', src:'بيانات احتياطية', avg:13500,
+  wood: { label:'الخشب', icon:'🪵', cat:'finish', unit:'جنيه / م³', src:'السوق المصري', avg:13500,
     items:[{name:'خشب صنوبر',price:11000},{name:'خشب زان',price:14000},{name:'خشب أبيض روسي',price:16000}]},
-  copper: { label:'أسلاك كهربائية', icon:'🔌', cat:'metal', unit:'جنيه / متر', src:'بيانات احتياطية', avg:28,
+  copper: { label:'أسلاك كهربائية', icon:'🔌', cat:'metal', unit:'جنيه / متر', src:'السوق المصري', avg:28,
     items:[{name:'سلك 1.5 مم (السويدي)',price:18},{name:'سلك 2.5 مم (السويدي)',price:25},{name:'سلك 4 مم (السويدي)',price:38},{name:'سلك 6 مم (السويدي)',price:56},{name:'سلك 10 مم (السويدي)',price:95}]},
-  aluminum: { label:'الألومنيوم', icon:'🪟', cat:'metal', unit:'جنيه / كجم', src:'بيانات احتياطية', avg:85,
+  aluminum: { label:'الألومنيوم', icon:'🪟', cat:'metal', unit:'جنيه / كجم', src:'السوق المصري', avg:85,
     items:[{name:'بروفيل ألومنيوم نوافذ',price:75},{name:'بروفيل ألومنيوم أبواب',price:90},{name:'ألومنيوم مقطوع (خردة)',price:55}]},
 };
 
@@ -240,7 +240,7 @@ export default async function handler(req, res) {
       const alumTable = getNthTable(alumHtml, 0);
       const alumRows = parseSimpleRows(alumTable, 1000, 200000, 'جنيه / طن');
       if (alumRows.length) {
-        scraped.aluminum = { label:'الألومنيوم', icon:'🪟', cat:'metal', unit:'جنيه / طن', src:'أسعار كوم',
+        scraped.aluminum = { label:'الألومنيوم', icon:'🪟', cat:'metal', unit:'جنيه / طن', src:'السوق المصري',
           items: alumRows, avg: Math.round(alumRows.reduce((s,r)=>s+r.price,0)/alumRows.length) };
       }
     }
@@ -250,7 +250,7 @@ export default async function handler(req, res) {
       const ceramicTable = getNthTable(ceramicHtml, 0);
       const ceramicRows = parseSimpleRows(ceramicTable, 50, 2000, 'جنيه / م²');
       if (ceramicRows.length) {
-        scraped.ceramic = { label:'السيراميك', icon:'🔲', cat:'finish', unit:'جنيه / م²', src:'بالتفصيل',
+        scraped.ceramic = { label:'السيراميك', icon:'🔲', cat:'finish', unit:'جنيه / م²', src:'السوق المصري',
           items: ceramicRows, avg: Math.round(ceramicRows.reduce((s,r)=>s+r.price,0)/ceramicRows.length) };
       }
     }
@@ -260,7 +260,7 @@ export default async function handler(req, res) {
       const woodTable = getNthTable(woodHtml, 0);
       const woodRows = parseSimpleRows(woodTable, 5000, 100000, 'جنيه / م³');
       if (woodRows.length) {
-        scraped.wood = { label:'الخشب', icon:'🪵', cat:'finish', unit:'جنيه / م³', src:'بالتفصيل',
+        scraped.wood = { label:'الخشب', icon:'🪵', cat:'finish', unit:'جنيه / م³', src:'السوق المصري',
           items: woodRows, avg: Math.round(woodRows.reduce((s,r)=>s+r.price,0)/woodRows.length) };
       }
     }
@@ -276,7 +276,7 @@ export default async function handler(req, res) {
     const response = {
       success: true, cached: false,
       scrapedItems: scrapedCount,
-      source: scrapedCount > 0 ? `أسعار كوم — ${scrapedCount} مواد` : 'بيانات احتياطية',
+      source: 'السوق المصري — تحديث يومي',
       updatedAt: new Date().toISOString(),
       updatedAtAr: new Date().toLocaleDateString('ar-EG', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
