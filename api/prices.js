@@ -99,20 +99,29 @@ function parseCementRows(tableHtml) {
 }
 
 // جداول بسيطة
-function parseSimpleRows(tableHtml, minVal, maxVal, unit) {
+function parseSimpleRows(tableHtml, minVal, maxVal, unit, combineFirstTwo) {
   if (!tableHtml) return [];
   const rows = tableHtml.split(/<tr[\s>]/i).slice(2);
   const result = [];
   for (const row of rows) {
     const tds = row.split(/<td[\s>]/i);
     if (tds.length < 2) continue;
-    const name = cleanText(tds[1]).replace(/class="[^"]*"/gi,"").replace(/class='[^']*'/gi,"").replace(/^[>\s]+/,"").trim();
+    const clean = s => cleanText(s).replace(/class="[^"]*"/gi,"").replace(/^[>\s]+/,"").trim();
+    let name = clean(tds[1]);
+    // لو فيه عمود تاني ومختلف — ندمجهم
+    if (combineFirstTwo && tds[2]) {
+      const col2 = clean(tds[2]);
+      const isPrice = toNum(col2) !== null;
+      if (!isPrice && col2 && col2 !== name) {
+        name = name + ' ' + col2;
+      }
+    }
     let price = null;
     for (let i = 2; i < tds.length; i++) {
       const v = toNum(tds[i]);
       if (v && v >= minVal && v <= maxVal) { price = v; break; }
     }
-    if (name && price) result.push({ name: name.substring(0,40), price, unit });
+    if (name && price) result.push({ name: name.substring(0,50), price, unit });
   }
   return result;
 }
@@ -152,14 +161,14 @@ function buildPrices(html) {
   }
 
   // ── الطوب الأحمر (جدول 4) ──
-  const bricksRows = parseSimpleRows(getNthTable(html, 4), 500, 50000, 'جنيه / ألف طوبة');
+  const bricksRows = parseSimpleRows(getNthTable(html, 4), 500, 50000, 'جنيه / ألف طوبة', true);
   if (bricksRows.length) {
     data.bricks = { label:'الطوب الأحمر', icon:'🧱', cat:'structure', unit:'جنيه / ألف طوبة', src:'أسعار كوم',
       items: bricksRows, avg: Math.round(bricksRows.reduce((s,r)=>s+r.price,0)/bricksRows.length) };
   }
 
   // ── الطوب الأبيض (جدول 5) ──
-  const wbRows = parseSimpleRows(getNthTable(html, 5), 50, 50000, 'جنيه / م²');
+  const wbRows = parseSimpleRows(getNthTable(html, 5), 50, 50000, 'جنيه / م²', true);
   if (wbRows.length) {
     data.white_bricks = { label:'الطوب الأبيض', icon:'⬜', cat:'structure', unit:'جنيه / م²', src:'أسعار كوم',
       items: wbRows, avg: Math.round(wbRows.reduce((s,r)=>s+r.price,0)/wbRows.length) };
