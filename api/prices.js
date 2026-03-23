@@ -5,7 +5,8 @@
 
 let memCache = { data: null, time: 0 };
 const CACHE_TTL = 6 * 60 * 60 * 1000;
-const SOURCE_URL = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%8A%D9%88%D9%85/';
+const SOURCE_URL = 'https://theprice1.com/%D8%A3%D8%B3%D8%B9%D8%A7%D8%B1-%D9%85%D9%88%D8%A7%D8%AF-%D8%A7%D9%84%D8%A8%D9%86%D8%A7%D8%A1-%D8%A7%D9%84%D9%9A%D9%8A%D9%88%D9%85/';
+
 async function fetchPage() {
   const res = await fetch(SOURCE_URL, {
     headers: {
@@ -36,7 +37,7 @@ function getTableAfter(html, anchors) {
     const idx = html.indexOf(anchor);
     if (idx === -1) continue;
     const tStart = html.indexOf('<table', idx);
-    if (tStart === -1 || tStart - idx > 4000) continue;
+    if (tStart === -1 || tStart - idx > 8000) continue;
     const tEnd = html.indexOf('</table>', tStart) + 8;
     if (tEnd < tStart) continue;
     return html.substring(tStart, tEnd);
@@ -52,8 +53,10 @@ function parseSteelRows(tableHtml) {
   for (const row of rows) {
     const tds = row.split(/<td[\s>]/i);
     if (tds.length < 5) continue;
-    const name = cleanText(tds[1])
+    const raw = cleanText(tds[1])
+      .replace(/class=["'][^"']*["']/gi,'')
       .replace(/سعر حديد\s*/i,'').replace(/اليوم$/i,'').trim();
+    const name = raw.replace(/^[>\s]+/,'').trim();
     const avg = toNum(tds[4]);
     if (name && avg && avg > 10000 && avg < 200000) {
       result.push({ name, price: avg, unit: 'جنيه / طن' });
@@ -70,8 +73,10 @@ function parseCementRows(tableHtml) {
   for (const row of rows) {
     const tds = row.split(/<td[\s>]/i);
     if (tds.length < 3) continue;
-    const name = cleanText(tds[2] || tds[1])
-      .replace(/أسمنت|اسمنت/gi,'').replace(/\d+\.\d+/g,'').trim() || cleanText(tds[1]);
+    const raw2 = cleanText(tds[2] || tds[1])
+      .replace(/class=["'][^"']*["']/gi,'')
+      .replace(/أسمنت|اسمنت/gi,'').replace(/\d+\.\d+/g,'').trim();
+    const name = (raw2 || cleanText(tds[1])).replace(/^[>\s]+/,'').trim();
     const price = toNum(tds[tds.length - 1]);
     if (name && price && price > 1000 && price < 20000) {
       result.push({ name: name.substring(0,30), price, unit: 'جنيه / طن' });
@@ -88,7 +93,7 @@ function parseSimpleRows(tableHtml, minVal, maxVal, unit) {
   for (const row of rows) {
     const tds = row.split(/<td[\s>]/i);
     if (tds.length < 2) continue;
-    const name = cleanText(tds[1]);
+    const name = cleanText(tds[1]).replace(/class=["'"][^"'"]*["']/gi,"").replace(/^[>\s]+/,"").trim();
     let price = null;
     for (let i = 2; i < tds.length; i++) {
       const v = toNum(tds[i]);
@@ -118,7 +123,7 @@ function buildPrices(html) {
   }
 
   // ── الأسمنت ──
-  const cementTable = getTableAfter(html, ['أسعار طن أسمنت البناء اليوم','أسعار_طن_أسمنت_البناء_اليوم']);
+  const cementTable = getTableAfter(html, ['أسعار طن أسمنت البناء اليوم','أسعار_طن_أسمنت_البناء_اليوم','أسمنت البناء اليوم','الاسمنت']);
   const cementRows = parseCementRows(cementTable);
   if (cementRows.length) {
     data.cement = {
@@ -133,7 +138,7 @@ function buildPrices(html) {
   }
 
   // ── الزلط ──
-  const gravelTable = getTableAfter(html, ['أسعار السن والظلط اليوم','أسعار_السن_والظلط_اليوم']);
+  const gravelTable = getTableAfter(html, ['أسعار السن والظلط اليوم','أسعار_السن_والظلط_اليوم','السن والظلط','الظلط']);
   const gravelRows = parseSimpleRows(gravelTable, 100, 2000, 'جنيه / م³');
   if (gravelRows.length) {
     data.gravel = { label:'الزلط والسن', icon:'🪨', cat:'structure', unit:'جنيه / م³', src:'أسعار كوم',
@@ -141,7 +146,7 @@ function buildPrices(html) {
   }
 
   // ── الرمل ──
-  const sandTable = getTableAfter(html, ['أسعار متر الرمل اليوم','أسعار_متر_الرمل_اليوم']);
+  const sandTable = getTableAfter(html, ['أسعار متر الرمل اليوم','أسعار_متر_الرمل_اليوم','متر الرمل','الرمل اليوم']);
   const sandRows = parseSimpleRows(sandTable, 50, 1000, 'جنيه / م³');
   if (sandRows.length) {
     data.sand = { label:'الرمل', icon:'⏳', cat:'structure', unit:'جنيه / م³', src:'أسعار كوم',
@@ -149,7 +154,7 @@ function buildPrices(html) {
   }
 
   // ── الطوب الأحمر ──
-  const bricksTable = getTableAfter(html, ['أسعار الطوب الأحمر اليوم','أسعار_الطوب_الأحمر_اليوم']);
+  const bricksTable = getTableAfter(html, ['أسعار الطوب الأحمر اليوم','أسعار_الطوب_الأحمر_اليوم','الطوب الأحمر اليوم','الطوب الأحمر']);
   const bricksRows = parseSimpleRows(bricksTable, 500, 15000, 'جنيه / ألف طوبة');
   if (bricksRows.length) {
     data.bricks = { label:'الطوب الأحمر', icon:'🧱', cat:'structure', unit:'جنيه / ألف طوبة', src:'أسعار كوم',
@@ -157,7 +162,7 @@ function buildPrices(html) {
   }
 
   // ── الطوب الأبيض ──
-  const wbTable = getTableAfter(html, ['أسعار الطوب الأبيض اليوم','أسعار_الطوب_الأبيض_اليوم']);
+  const wbTable = getTableAfter(html, ['أسعار الطوب الأبيض اليوم','أسعار_الطوب_الأبيض_اليوم','الطوب الأبيض اليوم','الطوب الأبيض']);
   const wbRows = parseSimpleRows(wbTable, 100, 5000, 'جنيه / م²');
   if (wbRows.length) {
     data.white_bricks = { label:'الطوب الأبيض', icon:'⬜', cat:'structure', unit:'جنيه / م²', src:'أسعار كوم',
